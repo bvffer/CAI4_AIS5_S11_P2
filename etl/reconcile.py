@@ -41,7 +41,7 @@ def _count_csv(path: Path) -> int:
         return max(0, sum(1 for _ in f) - 1)
 
 
-def reconcile_all() -> ReconciliationReport:
+def reconcile_all(skip_db: bool = False) -> ReconciliationReport:
     log.info("Running reconciliation …")
     r = ReconciliationReport()
 
@@ -54,22 +54,23 @@ def reconcile_all() -> ReconciliationReport:
         q_count = _count_csv(QUARANTINE_FILES[tbl])
         rr_count = _count_csv(REJECTED_FILES[tbl])
 
-        # No rows lost in transform: clean + quarantine + rejected == raw
         total = clean_count + q_count + rr_count
         r.add(f"{tbl}: no rows lost (clean+q+r == raw)", total == raw_count,
               expected=raw_count, actual=total,
               detail=f"clean={clean_count} q={q_count} r={rr_count}")
 
-    # DB counts (if available)
-    try:
-        gc = get_table_counts()
-        for tbl in LOAD_ORDER:
-            gold = GOLD_TABLE_MAP[tbl]
-            stg = STAGING_TABLE_MAP[tbl]
-            g, s = gc.get(gold, -1), gc.get(stg, -1)
-            r.add(f"DB {gold} == staging {stg}", g == s, expected=s, actual=g)
-    except Exception as exc:
-        r.add("DB connectivity", False, detail=str(exc))
+    if skip_db:
+        log.info("Skipping DB reconciliation checks (--skip-db)")
+    else:
+        try:
+            gc = get_table_counts()
+            for tbl in LOAD_ORDER:
+                gold = GOLD_TABLE_MAP[tbl]
+                stg = STAGING_TABLE_MAP[tbl]
+                g, s = gc.get(gold, -1), gc.get(stg, -1)
+                r.add(f"DB {gold} == staging {stg}", g == s, expected=s, actual=g)
+        except Exception as exc:
+            r.add("DB connectivity", False, detail=str(exc))
 
     log.info(r.summary())
     return r

@@ -77,7 +77,7 @@ def run_pipeline(skip_db: bool = False) -> dict:
     # Stage 5: Reconcile
     log.info("\n▶ STAGE 5: RECONCILE")
     t = time.time()
-    recon = reconcile_all()
+    recon = reconcile_all(skip_db=skip_db)
     summary["stages"]["reconcile"] = {"duration_s": round(time.time() - t, 2),
                                        "checks": recon.checks,
                                        "passed": all(c["passed"] for c in recon.checks)}
