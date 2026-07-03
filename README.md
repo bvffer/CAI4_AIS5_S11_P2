@@ -45,13 +45,13 @@ flowchart LR
 
 ## What the Pipeline Does
 
-| Step | Action |
-|---|---|---|
-| **Extract** | Reads all six CSV files from `data/raw/` |
-| **Transform** | Cleans, normalises, and validates each table independently |
-| **Validate** | Checks PK uniqueness, required fields, FK integrity, email/SKU uniqueness |
-| **Load** | Truncates staging tables, bulk-loads clean CSVs, upserts into PostgreSQL gold tables |
-| **Reconcile** | Verifies no rows were lost and DB counts match staging |
+| Step          | Action                                                                 |
+|---------------|------------------------------------------------------------------------|
+| **Extract**   | Reads all six CSV files from `data/raw/`.                              |
+| **Transform** | Cleans, normalizes, and validates each table independently.            |
+| **Validate**  | Checks PK uniqueness, required fields, FK integrity, and email/SKU uniqueness. |
+| **Load**      | Truncates staging tables, bulk-loads clean CSVs, and upserts into PostgreSQL gold tables. |
+| **Reconcile** | Verifies that no rows were lost and that database counts match staging counts. |
 
 ### Business Rules Applied
 
