@@ -85,7 +85,14 @@ def run_pipeline(skip_db: bool = False) -> dict:
     total = time.time() - start
     summary["total_duration_s"] = round(total, 2)
     summary["completed_at"] = datetime.now().isoformat()
-    summary["status"] = "completed"
+    validation_passed = validation.passed
+    reconciled_passed = all(c["passed"] for c in recon.checks)
+    if validation_passed and reconciled_passed:
+        summary["status"] = "completed"
+    elif reconciled_passed:
+        summary["status"] = "completed_with_warnings"
+    else:
+        summary["status"] = "completed_with_errors"
 
     # Write summary
     from etl.config import LOG_DIR

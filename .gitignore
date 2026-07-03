@@ -14,3 +14,10 @@ data/raw/output_en.csv
 venv/
 env/
 .env
+
+# ETL run artifacts (regenerated every run, not source)
+etl/logs/
+data/rejected/
+data/quarantine/
+data/clean/
+data/_archive_pre_fix_*/

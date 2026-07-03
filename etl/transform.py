@@ -325,15 +325,20 @@ def transform_all(raw_data: dict[str, list[dict]]) -> dict[str, dict[str, list[d
     for t, d in results.items():
         log.info("  %s: clean=%d quarantine=%d rejected=%d",
                  t, len(d["clean"]), len(d["quarantine"]), len(d["rejected"]))
+        raw_len = len(raw_data.get(t, []))
+        total = len(d["clean"]) + len(d["quarantine"]) + len(d["rejected"])
+        assert total == raw_len, (
+            f"{t}: row count mismatch after transform — "
+            f"clean({len(d['clean'])}) + quarantine({len(d['quarantine'])}) + rejected({len(d['rejected'])}) "
+            f"= {total}, expected {raw_len} (raw input rows)"
+        )
 
     # Write quarantine + rejected so reconcile can count them
     for table in ["contacts", "customers", "products", "sales_orders", "order_lines"]:
         qr = results[table]["quarantine"]
         rr = results[table]["rejected"]
         all_f = FIELDS[table] + REASON_FIELDS
-        if qr:
-            _write_csv(QUARANTINE_FILES[table], qr, all_f)
-        if rr:
-            _write_csv(REJECTED_FILES[table], rr, all_f)
+        _write_csv(QUARANTINE_FILES[table], qr, all_f)
+        _write_csv(REJECTED_FILES[table], rr, all_f)
 
     return results
