@@ -1,11 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
+import { SlideDeck } from '@/components/SlideDeck'
 
 export default function Home() {
-  useEffect(() => {
-    window.location.href = '/presentation.html'
-  }, [])
-
-  return null
+  return <SlideDeck />
 }
