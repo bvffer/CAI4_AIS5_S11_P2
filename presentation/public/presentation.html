@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customer Data ETL Pipeline — CAI4_AIS5_S11_P2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+/* ========== RESET & BASE ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #222846;
+  background: #FFFFFF;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ========== SCROLL PROGRESS BAR ========== */
+#scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: #0E9F6E;
+  z-index: 10001;
+  transition: width 0.1s linear;
+  width: 0%;
+}
+
+/* ========== NAVBAR ========== */
+#navbar {
+  position: fixed;
+  top: 3px;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  background: rgba(20, 27, 77, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(202, 220, 252, 0.1);
+  transition: transform 0.3s ease;
+}
+.nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.65rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.nav-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #FFFFFF;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.nav-links::-webkit-scrollbar { display: none; }
+.nav-links a {
+  color: #CADCFC;
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  transition: background 0.2s, color 0.2s;
+}
+.nav-links a:hover { background: rgba(202, 220, 252, 0.12); color: #FFFFFF; }
+
+/* ========== SECTIONS COMMON ========== */
+.section {
+  padding: 5rem 1.5rem;
+  position: relative;
+}
+.section-dark {
+  background: #141B4D;
+  color: #FFFFFF;
+}
+.section-light {
+  background: #FFFFFF;
+  color: #222846;
+}
+.section-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5B6485;
+  margin-bottom: 0.75rem;
+}
+.section-dark .section-label { color: #CADCFC; opacity: 0.6; }
+.section-heading {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+  color: #1E2761;
+}
+.section-dark .section-heading { color: #FFFFFF; }
+.section-subheading {
+  font-size: 1rem;
+  color: #5B6485;
+  max-width: 680px;
+  line-height: 1.7;
+}
+.section-dark .section-subheading { color: #CADCFC; opacity: 0.7; }
+
+/* ========== FADE-IN ANIMATION ========== */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ========== CARDS ========== */
+.card {
+  background: #F4F7FE;
+  border-radius: 0.625rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(30, 39, 97, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(30, 39, 97, 0.1);
+}
+.card-dark {
+  background: rgba(202, 220, 252, 0.06);
+  border: 1px solid rgba(202, 220, 252, 0.1);
+}
+.card-dark:hover {
+  background: rgba(202, 220, 252, 0.1);
+}
+
+/* ========== GRID ========== */
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-top: 2.5rem;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  margin-top: 2.5rem;
+}
+.grid-5 {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1.25rem;
+  margin-top: 2.5rem;
+}
+@media (max-width: 900px) {
+  .grid-4, .grid-3, .grid-5 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 550px) {
+  .grid-4, .grid-3, .grid-5 { grid-template-columns: 1fr; }
+}
+
+/* ========== HERO ========== */
+#hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 7rem 1.5rem 4rem;
+  position: relative;
+  overflow: hidden;
+  background: #141B4D;
+}
+.hero-grid-bg {
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background-image:
+    linear-gradient(rgba(202,220,252,0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(202,220,252,0.5) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: gridMove 20s linear infinite;
+}
+@keyframes gridMove {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(60px, 60px); }
+}
+.hero-content { position: relative; z-index: 2; }
+.hero-content h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(2.25rem, 6vw, 3.75rem);
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1.15;
+  margin-bottom: 1.25rem;
+  letter-spacing: -0.02em;
+}
+.hero-content .subtitle {
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  color: #CADCFC;
+  max-width: 620px;
+  margin: 0 auto 1.5rem;
+  line-height: 1.7;
+  font-weight: 300;
+}
+.hero-content .team-line {
+  font-size: 0.875rem;
+  color: #CADCFC;
+  opacity: 0.5;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+.scroll-indicator {
+  position: absolute;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: #CADCFC;
+  opacity: 0.4;
+  animation: scrollBounce 2s ease-in-out infinite;
+}
+@keyframes scrollBounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(8px); }
+}
+.scroll-indicator span { font-size: 0.7rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; }
+
+/* ========== STAT CARDS ========== */
+.stat-card {
+  text-align: center;
+  padding: 2rem 1.25rem;
+}
+.stat-card .stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(30, 39, 97, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  color: #1E2761;
+}
+.stat-card .stat-number {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1E2761;
+  line-height: 1.1;
+  margin-bottom: 0.4rem;
+}
+.stat-card .stat-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #222846;
+  margin-bottom: 0.35rem;
+}
+.stat-card .stat-desc {
+  font-size: 0.78rem;
+  color: #5B6485;
+  line-height: 1.5;
+}
+.stat-icon i { width: 22px; height: 22px; }
+
+/* ========== PROBLEM SECTION ========== */
+.problem-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin: 2.5rem 0;
+}
+@media (max-width: 700px) { .problem-stats { grid-template-columns: repeat(2, 1fr); } }
+.problem-stat-card {
+  text-align: center;
+  padding: 2rem 1rem;
+  border-radius: 0.625rem;
+  background: rgba(202, 220, 252, 0.06);
+  border: 1px solid rgba(202, 220, 252, 0.1);
+}
+.problem-stat-card .big-num {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+.problem-stat-card .big-label {
+  font-size: 0.85rem;
+  color: #CADCFC;
+  opacity: 0.7;
+}
+.terminal-panel {
+  background: #0D1117;
+  border-radius: 0.625rem;
+  padding: 1.5rem 1.75rem;
+  margin: 2rem 0;
+  overflow-x: auto;
+  border: 1px solid rgba(202, 220, 252, 0.1);
+}
+.terminal-panel .term-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(202, 220, 252, 0.08);
+}
+.terminal-panel .term-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+}
+.terminal-panel .term-dot.r { background: #C0392B; }
+.terminal-panel .term-dot.y { background: #D97706; }
+.terminal-panel .term-dot.g { background: #0E9F6E; }
+.terminal-panel .term-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: #CADCFC;
+  opacity: 0.4;
+  margin-left: 0.5rem;
+}
+.terminal-panel pre {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.8;
+  color: #CADCFC;
+  white-space: pre;
+  margin: 0;
+}
+.terminal-panel .term-comment { color: #5B6485; }
+.terminal-panel .term-string { color: #0E9F6E; }
+.terminal-panel .term-error { color: #C0392B; }
+.terminal-panel .term-warn { color: #D97706; }
+.closing-line {
+  font-size: 1rem;
+  font-style: italic;
+  color: #CADCFC;
+  opacity: 0.7;
+  border-left: 3px solid rgba(202, 220, 252, 0.2);
+  padding-left: 1rem;
+  margin-top: 2rem;
+}
+
+/* ========== ARCHITECTURE — MEDALLION ========== */
+.medallion-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin: 2.5rem 0;
+}
+.medallion-card {
+  flex: 1;
+  padding: 2rem 1.5rem;
+  border-radius: 0.625rem;
+  text-align: center;
+  position: relative;
+}
+.medallion-card.bronze {
+  background: linear-gradient(135deg, #8B5E34 0%, #6B4226 100%);
+  color: #FFFFFF;
+}
+.medallion-card.silver {
+  background: linear-gradient(135deg, #1E2761 0%, #141B4D 100%);
+  color: #FFFFFF;
+}
+.medallion-card.gold {
+  background: linear-gradient(135deg, #0E9F6E 0%, #0A7A54 100%);
+  color: #FFFFFF;
+}
+.medallion-card .med-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: 0.5rem;
+}
+.medallion-card .med-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+.medallion-card .med-path {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  opacity: 0.8;
+  margin-bottom: 1rem;
+}
+.medallion-card .med-desc {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  opacity: 0.9;
+}
+.med-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  min-width: 48px;
+}
+.med-arrow svg { color: #1E2761; }
+.arch-bullets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  margin-top: 2rem;
+}
+@media (max-width: 700px) { .arch-bullets { grid-template-columns: 1fr; } }
+.arch-bullet {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #F4F7FE;
+  border-radius: 0.5rem;
+}
+.arch-bullet .ab-icon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 8px;
+  background: rgba(30, 39, 97, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1E2761;
+}
+.arch-bullet .ab-icon i { width: 18px; height: 18px; }
+.arch-bullet .ab-text strong {
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 0.15rem;
+}
+.arch-bullet .ab-text p {
+  font-size: 0.8rem;
+  color: #5B6485;
+  line-height: 1.5;
+}
+
+/* ========== PIPELINE DIAGRAM ========== */
+.pipeline-container { margin: 2.5rem 0; }
+.pipeline-flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+.pipeline-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  transition: background 0.2s;
+  position: relative;
+}
+.pipeline-node:hover { background: rgba(30, 39, 97, 0.04); }
+.pipeline-node .pn-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: #1E2761;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.pipeline-node:hover .pn-icon,
+.pipeline-node.active .pn-icon {
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(30, 39, 97, 0.25);
+}
+.pipeline-node .pn-icon i { width: 24px; height: 24px; }
+.pipeline-node .pn-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1E2761;
+}
+.pipeline-node .pn-file {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: #5B6485;
+}
+.pipeline-arrow {
+  display: flex;
+  align-items: center;
+  color: #1E2761;
+  opacity: 0.4;
+  padding: 0 0.25rem;
+  margin-bottom: 1.5rem;
+}
+.pipeline-arrow i { width: 24px; height: 24px; }
+@media (max-width: 900px) {
+  .pipeline-flow { flex-direction: column; }
+  .pipeline-arrow { transform: rotate(90deg); margin-bottom: 0; }
+}
+
+/* Pipeline detail panel */
+.pipeline-detail {
+  background: #F4F7FE;
+  border-radius: 0.625rem;
+  padding: 1.75rem 2rem;
+  margin-top: 1.5rem;
+  border: 1px solid rgba(30, 39, 97, 0.08);
+  display: none;
+}
+.pipeline-detail.active { display: block; }
+.pipeline-detail .pd-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.pipeline-detail .pd-header .pd-file {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  background: #1E2761;
+  color: #FFFFFF;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+}
+.pipeline-detail .pd-desc {
+  font-size: 0.95rem;
+  color: #222846;
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+.pipeline-detail .pd-ops {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.pipeline-detail .pd-ops li {
+  font-size: 0.85rem;
+  color: #5B6485;
+  padding-left: 1.25rem;
+  position: relative;
+  line-height: 1.5;
+}
+.pipeline-detail .pd-ops li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #1E2761;
+}
+
+/* Validate branches */
+.validate-branches {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+.vb-box {
+  padding: 1rem 1.5rem;
+  border-radius: 0.5rem;
+  text-align: center;
+  min-width: 160px;
+  border: 2px solid;
+}
+.vb-box.clean { border-color: #0E9F6E; background: rgba(14, 159, 110, 0.06); }
+.vb-box.quarantine { border-color: #D97706; background: rgba(217, 119, 6, 0.06); }
+.vb-box.rejected { border-color: #C0392B; background: rgba(192, 57, 43, 0.06); }
+.vb-box .vb-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+.vb-box.clean .vb-label { color: #0E9F6E; }
+.vb-box.quarantine .vb-label { color: #D97706; }
+.vb-box.rejected .vb-label { color: #C0392B; }
+.vb-box .vb-path {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: #5B6485;
+}
+.vb-connect {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+.vb-connect .vb-line {
+  width: 2px;
+  height: 20px;
+  background: #1E2761;
+  opacity: 0.2;
+}
+
+/* ========== QUALITY TIERS ========== */
+.tier-card {
+  padding: 2rem 1.5rem;
+  border-radius: 0.625rem;
+  border: 2px solid;
+  position: relative;
+  overflow: hidden;
+}
+.tier-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+}
+.tier-card.tier-rejected {
+  border-color: rgba(192, 57, 43, 0.25);
+  background: #FFFFFF;
+}
+.tier-card.tier-rejected::before { background: #C0392B; }
+.tier-card.tier-quarantine {
+  border-color: rgba(217, 119, 6, 0.25);
+  background: #FFFFFF;
+}
+.tier-card.tier-quarantine::before { background: #D97706; }
+.tier-card.tier-clean {
+  border-color: rgba(14, 159, 110, 0.25);
+  background: #FFFFFF;
+}
+.tier-card.tier-clean::before { background: #0E9F6E; }
+.tier-card .tier-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+.tier-card.tier-rejected .tier-icon { background: rgba(192, 57, 43, 0.1); color: #C0392B; }
+.tier-card.tier-quarantine .tier-icon { background: rgba(217, 119, 6, 0.1); color: #D97706; }
+.tier-card.tier-clean .tier-icon { background: rgba(14, 159, 110, 0.1); color: #0E9F6E; }
+.tier-card .tier-icon i { width: 20px; height: 20px; }
+.tier-card .tier-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #222846;
+}
+.tier-card .tier-def {
+  font-size: 0.85rem;
+  color: #5B6485;
+  line-height: 1.65;
+  margin-bottom: 0.75rem;
+}
+.tier-card .tier-path {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: #1E2761;
+  background: #F4F7FE;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 0.5rem;
+}
+.tier-card .tier-action {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.tier-card.tier-rejected .tier-action { color: #C0392B; }
+.tier-card.tier-quarantine .tier-action { color: #D97706; }
+.tier-card.tier-clean .tier-action { color: #0E9F6E; }
+
+/* ========== VALIDATION CASCADE ========== */
+.cascade-container {
+  margin: 3rem 0 1rem;
+  padding: 2rem 1.5rem;
+  background: #F4F7FE;
+  border-radius: 0.625rem;
+  overflow-x: auto;
+}
+.cascade-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1E2761;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+.cascade-flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  min-width: 320px;
+}
+.cascade-step {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 600px;
+  position: relative;
+}
+.cascade-main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #FFFFFF;
+  border: 1.5px solid #1E2761;
+  border-radius: 0.5rem;
+  padding: 0.6rem 1rem;
+  flex: 1;
+  min-width: 0;
+}
+.cascade-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: #FFFFFF;
+  background: #1E2761;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.cascade-text {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #222846;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cascade-fail {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+}
+.cascade-fail-line {
+  width: 20px;
+  height: 1.5px;
+  background: #D97706;
+}
+.cascade-fail-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #D97706;
+  background: rgba(217, 119, 6, 0.08);
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.cascade-connector {
+  width: 2px;
+  height: 12px;
+  background: #1E2761;
+  opacity: 0.3;
+  margin-left: 48px;
+}
+.cascade-result {
+  background: #1E2761;
+  color: #FFFFFF;
+  border-radius: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ========== RECONCILIATION ========== */
+.recon-equation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  background: #F4F7FE;
+  border-radius: 0.75rem;
+  margin: 2rem 0;
+  flex-wrap: wrap;
+}
+.recon-term {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+.recon-term .rt-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+.recon-term .rt-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.recon-term.clean .rt-label, .recon-term.clean .rt-value { color: #0E9F6E; }
+.recon-term.quarantine .rt-label, .recon-term.quarantine .rt-value { color: #D97706; }
+.recon-term.rejected .rt-label, .recon-term.rejected .rt-value { color: #C0392B; }
+.recon-term.raw .rt-label, .recon-term.raw .rt-value { color: #1E2761; }
+.recon-op {
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: #5B6485;
+}
+.recon-db-check {
+  text-align: center;
+  padding: 1rem 1.5rem;
+  background: #F4F7FE;
+  border-radius: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: #1E2761;
+}
+.recon-db-check i { width: 18px; height: 18px; color: #0E9F6E; }
+.recon-proof {
+  font-size: 0.95rem;
+  color: #5B6485;
+  margin-top: 1.5rem;
+  text-align: center;
+  font-style: italic;
+}
+.recon-table {
+  width: 100%;
+  max-width: 480px;
+  margin: 2rem auto 0;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.recon-table th {
+  text-align: left;
+  padding: 0.6rem 1rem;
+  background: #F4F7FE;
+  font-weight: 600;
+  color: #1E2761;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid #1E2761;
+}
+.recon-table td {
+  padding: 0.55rem 1rem;
+  border-bottom: 1px solid rgba(30, 39, 97, 0.08);
+  color: #222846;
+}
+.recon-table td:last-child {
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+}
+
+/* ========== FILE TREE ========== */
+.file-tree-container {
+  background: #0D1117;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  border: 1px solid rgba(202, 220, 252, 0.08);
+  max-height: 600px;
+  overflow-y: auto;
+}
+.file-tree-container::-webkit-scrollbar { width: 6px; }
+.file-tree-container::-webkit-scrollbar-track { background: transparent; }
+.file-tree-container::-webkit-scrollbar-thumb { background: rgba(202, 220, 252, 0.15); border-radius: 3px; }
+.ft-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(202, 220, 252, 0.08);
+  margin-bottom: 0.75rem;
+}
+.ft-header span {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: #CADCFC;
+  opacity: 0.4;
+}
+.ft-root {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.9;
+  color: #CADCFC;
+  user-select: none;
+}
+.ft-item {
+  display: flex;
+  align-items: center;
+  padding-left: 1.25rem;
+  position: relative;
+  cursor: default;
+}
+.ft-item.has-children { cursor: pointer; }
+.ft-item.has-children:hover { background: rgba(202, 220, 252, 0.04); }
+.ft-chevron {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 0.25rem;
+  color: #CADCFC;
+  opacity: 0.4;
+  transition: transform 0.2s;
+}
+.ft-chevron.open { transform: rotate(90deg); }
+.ft-chevron i { width: 14px; height: 14px; }
+.ft-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ft-icon i { width: 15px; height: 15px; }
+.ft-icon.folder { color: #CADCFC; opacity: 0.7; }
+.ft-icon.py { color: #79C0FF; }
+.ft-icon.sql { color: #FFA657; }
+.ft-icon.md { color: #D2A8FF; }
+.ft-icon.csv { color: #7EE787; }
+.ft-icon.other { color: #CADCFC; opacity: 0.5; }
+.ft-name { white-space: nowrap; }
+.ft-name.folder-name { color: #CADCFC; opacity: 0.85; }
+.ft-name.file-py { color: #79C0FF; }
+.ft-name.file-sql { color: #FFA657; }
+.ft-name.file-md { color: #D2A8FF; }
+.ft-name.file-csv { color: #7EE787; }
+.ft-name.file-other { color: #CADCFC; opacity: 0.6; }
+.ft-children {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.35s ease;
+}
+.ft-children.open { max-height: 2000px; }
+.ft-annotation {
+  font-size: 0.65rem;
+  color: #5B6485;
+  font-style: italic;
+  margin-left: 0.5rem;
+  opacity: 0.8;
+}
+
+/* ========== MODULE DEPS ========== */
+.dep-graph {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  background: #F4F7FE;
+  border-radius: 0.75rem;
+  margin: 2rem 0;
+  overflow-x: auto;
+}
+.dep-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.dep-box {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.dep-box.entry { background: #1E2761; color: #FFFFFF; }
+.dep-box.main { background: #CADCFC; color: #141B4D; }
+.dep-box.stage { background: #FFFFFF; color: #1E2761; border: 1.5px solid #1E2761; }
+.dep-box.util { background: rgba(30, 39, 97, 0.08); color: #1E2761; }
+.dep-box.ext { background: #D97706; color: #FFFFFF; font-size: 0.72rem; }
+.dep-arrow-down {
+  color: #1E2761;
+  opacity: 0.3;
+}
+.dep-arrow-down i { width: 18px; height: 18px; }
+
+/* ========== TEAM CARDS ========== */
+.team-card {
+  text-align: center;
+  padding: 1.75rem 1rem;
+}
+.team-card .team-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(202, 220, 252, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  color: #CADCFC;
+  border: 2px solid rgba(202, 220, 252, 0.15);
+}
+.team-card .team-avatar i { width: 24px; height: 24px; }
+.team-card .team-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 0.25rem;
+}
+.team-card .team-role {
+  font-size: 0.82rem;
+  color: #CADCFC;
+  opacity: 0.65;
+  line-height: 1.4;
+}
+
+/* ========== DOC CARDS ========== */
+.doc-card {
+  padding: 1.25rem 1.25rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.doc-card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(30, 39, 97, 0.1); }
+.doc-card .doc-icon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 8px;
+  background: rgba(30, 39, 97, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1E2761;
+}
+.doc-card .doc-icon i { width: 18px; height: 18px; }
+.doc-card .doc-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #1E2761;
+  margin-bottom: 0.2rem;
+}
+.doc-card .doc-desc {
+  font-size: 0.78rem;
+  color: #5B6485;
+  line-height: 1.5;
+}
+.docs-closing {
+  font-size: 0.95rem;
+  color: #5B6485;
+  font-style: italic;
+  margin-top: 2rem;
+  text-align: center;
+}
+
+/* ========== CLOSING SECTION ========== */
+.closing-section {
+  min-height: 50vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.closing-section h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 0.75rem;
+}
+.closing-section .closing-sub {
+  font-size: 1rem;
+  color: #CADCFC;
+  opacity: 0.65;
+  max-width: 520px;
+  margin-bottom: 1.5rem;
+  line-height: 1.7;
+}
+.closing-section .closing-team {
+  font-size: 0.9rem;
+  color: #CADCFC;
+  opacity: 0.45;
+  margin-bottom: 0.5rem;
+}
+.closing-section .closing-thanks {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  color: #FFFFFF;
+  margin-top: 2rem;
+  opacity: 0.8;
+}
+
+/* ========== SOURCE DATA TABLE ========== */
+.source-table-wrap {
+  margin: 2rem 0;
+  overflow-x: auto;
+}
+.source-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.source-table th {
+  text-align: left;
+  padding: 0.6rem 1rem;
+  background: #F4F7FE;
+  font-weight: 600;
+  color: #1E2761;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid rgba(30, 39, 97, 0.15);
+}
+.source-table td {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid rgba(30, 39, 97, 0.06);
+  color: #222846;
+}
+.source-table td:last-child {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+}
+.section-dark .source-table th {
+  background: rgba(202, 220, 252, 0.08);
+  color: #CADCFC;
+}
+.section-dark .source-table td {
+  color: #CADCFC;
+  border-bottom-color: rgba(202, 220, 252, 0.06);
+}
+
+/* ========== UTILITIES ========== */
+.text-center { text-align: center; }
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mt-4 { margin-top: 2rem; }
+.mb-2 { margin-bottom: 1rem; }
+
+/* ========== SECTION PADDING ON NAV OFFSET ========== */
+.section { padding-top: 5.5rem; }
+#hero { padding-top: 7rem; }
+</style>
+</head>
+<body>
+
+<!-- SCROLL PROGRESS BAR -->
+<div id="scroll-progress"></div>
+
+<!-- NAVBAR -->
+<nav id="navbar">
+  <div class="nav-inner">
+    <div class="nav-title">Customer Data ETL Pipeline</div>
+    <div class="nav-links">
+      <a href="#overview">Overview</a>
+      <a href="#problem">Problem</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#quality">Quality Tiers</a>
+      <a href="#reconcile">Reconcile</a>
+      <a href="#under-the-hood">Under the Hood</a>
+      <a href="#module-deps">Module Deps</a>
+      <a href="#team">Team</a>
+      <a href="#docs">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================================ -->
+<!-- SECTION 1: HERO                               -->
+<!-- ============================================ -->
+<section id="hero">
+  <div class="hero-grid-bg"></div>
+  <div class="hero-content">
+    <h1>Customer Data ETL Pipeline</h1>
+    <p class="subtitle">From fragmented CRM exports to a clean, trusted, analysis-ready PostgreSQL database</p>
+    <p class="team-line">Ali &middot; Amin &middot; Aseel &middot; Menna &middot; Habiba</p>
+  </div>
+  <div class="scroll-indicator">
+    <span>Scroll</span>
+    <i data-lucide="chevron-down" style="width:20px;height:20px;"></i>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 2: OVERVIEW                           -->
+<!-- ============================================ -->
+<section id="overview" class="section section-light">
+  <div class="section-inner reveal">
+    <div class="section-label">Overview</div>
+    <h2 class="section-heading">One Pipeline, Three Sources, Zero Data Loss</h2>
+    <p class="section-subheading">A Python-based ETL pipeline that consolidates fragmented customer records from a CRM system into a single, clean, trusted PostgreSQL database.</p>
+    <div class="grid-4">
+      <div class="card stat-card">
+        <div class="stat-icon"><i data-lucide="file-text"></i></div>
+        <div class="stat-number">6</div>
+        <div class="stat-label">Source Files</div>
+        <div class="stat-desc">Six CSV files from three CRM source systems</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon"><i data-lucide="git-branch"></i></div>
+        <div class="stat-number">5</div>
+        <div class="stat-label">Pipeline Stages</div>
+        <div class="stat-desc">Extract &rarr; Transform &rarr; Validate &rarr; Load &rarr; Reconcile</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon"><i data-lucide="layers"></i></div>
+        <div class="stat-number">3</div>
+        <div class="stat-label">Quality Tiers</div>
+        <div class="stat-desc">Clean, Quarantine, and Rejected classification</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon"><i data-lucide="database"></i></div>
+        <div class="stat-number">1</div>
+        <div class="stat-label">Trusted Database</div>
+        <div class="stat-desc">PostgreSQL gold tables with full audit trail</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 3: PROBLEM STATEMENT                  -->
+<!-- ============================================ -->
+<section id="problem" class="section section-dark">
+  <div class="section-inner reveal">
+    <div class="section-label">Problem Statement</div>
+    <h2 class="section-heading">Three Systems, Thousands of Inconsistencies</h2>
+    <p class="section-subheading">Customer data arrived from three separate CRM exports — each with its own conventions, errors, and gaps. Before any pipeline could run, the raw data had to be understood.</p>
+    <div class="problem-stats">
+      <div class="problem-stat-card">
+        <div class="big-num">3</div>
+        <div class="big-label">Source Systems</div>
+      </div>
+      <div class="problem-stat-card">
+        <div class="big-num">46</div>
+        <div class="big-label">Duplicate Emails</div>
+      </div>
+      <div class="problem-stat-card">
+        <div class="big-num">7</div>
+        <div class="big-label">Duplicate SKUs</div>
+      </div>
+      <div class="problem-stat-card">
+        <div class="big-num">317</div>
+        <div class="big-label">Missing Values</div>
+      </div>
+    </div>
+    <div class="source-table-wrap">
+      <table class="source-table">
+        <thead>
+          <tr><th>Table</th><th>Rows</th><th>Unique PKs</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>contacts</td><td>1,661</td><td>1,661 UUIDs</td></tr>
+          <tr><td>customers</td><td>1,618</td><td>1,618 UUIDs</td></tr>
+          <tr><td>products</td><td>764</td><td>757 SKUs</td></tr>
+          <tr><td>sales_orders</td><td>2,770</td><td>2,770 UUIDs</td></tr>
+          <tr><td>order_lines</td><td>3,663</td><td>3,663 UUIDs</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="terminal-panel">
+      <div class="term-header">
+        <div class="term-dot r"></div>
+        <div class="term-dot y"></div>
+        <div class="term-dot g"></div>
+        <span class="term-title">data_randomness_report findings</span>
+      </div>
+      <pre><span class="term-comment">// Casing chaos — same value, different representations</span>
+<span class="term-string">'B2B'</span>     vs  <span class="term-string">'b2b'</span>     vs  <span class="term-string">'  B2B'</span>    vs  <span class="term-string">'\tB2B\t'</span>
+<span class="term-string">'Active'</span>  vs  <span class="term-string">'active'</span>  vs  <span class="term-string">'ACTIVE'</span>   vs  <span class="term-string">'  active'</span>
+
+<span class="term-comment">// Typos found in categories and fields</span>
+<span class="term-error">'grcoeries'</span>  <span class="term-error">'mobile-accessoreis'</span>  <span class="term-error">'fargrances'</span>
+<span class="term-error">'Marekting'</span>  <span class="term-error">'Pendign'</span>  <span class="term-error">'Pneding'</span>  <span class="term-error">'Cmopleted'</span>
+<span class="term-error">'Completde'</span>  <span class="term-error">'Complteed'</span>  <span class="term-error">'Comlpeted'</span>  <span class="term-error">'Copmleted'</span>
+
+<span class="term-comment">// Impossible dates</span>
+<span class="term-warn">'2026-13-45'</span>  <span class="term-comment"># month 13, day 45</span>
+<span class="term-warn">'2206-04-29'</span>  <span class="term-comment"># year 2206</span>
+
+<span class="term-comment">// Price anomalies</span>
+<span class="term-string">$0.79</span> &rarr; <span class="term-string">$87,250.98</span>  <span class="term-comment"># product price range</span>
+<span class="term-string">1</span> &rarr; <span class="term-string">99,175</span>        <span class="term-comment"># quantity range</span></pre>
+    </div>
+    <p class="closing-line">Without a pipeline to catch this, every downstream report would inherit these errors silently.</p>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 4: ARCHITECTURE — MEDALLION           -->
+<!-- ============================================ -->
+<section id="architecture" class="section section-light">
+  <div class="section-inner reveal">
+    <div class="section-label">Architecture</div>
+    <h2 class="section-heading">Medallion Architecture</h2>
+    <p class="section-subheading">A three-tier data lakehouse pattern — raw data flows through Bronze, Silver, and Gold layers, each with a distinct purpose and level of quality.</p>
+    <div class="medallion-row">
+      <div class="medallion-card bronze">
+        <div class="med-label">Layer 1</div>
+        <div class="med-title">Bronze</div>
+        <div class="med-path">data/raw/</div>
+        <div class="med-desc">Untouched source CSVs. Six files from three CRM systems. Never modified — the original source of truth.</div>
+      </div>
+      <div class="med-arrow">
+        <i data-lucide="chevron-right" style="width:28px;height:28px;color:#CADCFC;opacity:0.5;"></i>
+      </div>
+      <div class="medallion-card silver">
+        <div class="med-label">Layer 2</div>
+        <div class="med-title">Silver</div>
+        <div class="med-path">Python ETL</div>
+        <div class="med-desc">Cleaning, validation, and normalization. Casing standardization, typo correction, date parsing, FK integrity checks.</div>
+      </div>
+      <div class="med-arrow">
+        <i data-lucide="chevron-right" style="width:28px;height:28px;color:#CADCFC;opacity:0.5;"></i>
+      </div>
+      <div class="medallion-card gold">
+        <div class="med-label">Layer 3</div>
+        <div class="med-title">Gold</div>
+        <div class="med-path">data/clean/ + PostgreSQL</div>
+        <div class="med-desc">Analysis-ready tables. Five gold tables plus an etl_batch audit log. The single source of truth for reporting.</div>
+      </div>
+    </div>
+    <div class="arch-bullets">
+      <div class="arch-bullet">
+        <div class="ab-icon"><i data-lucide="scan-search"></i></div>
+        <div class="ab-text">
+          <strong>Traceable</strong>
+          <p>Every run is logged in the etl_batch table with timestamps, status, and notes.</p>
+        </div>
+      </div>
+      <div class="arch-bullet">
+        <div class="ab-icon"><i data-lucide="rotate-ccw"></i></div>
+        <div class="ab-text">
+          <strong>Idempotent</strong>
+          <p>Safe re-runs — staging tables are truncated before each load, so duplicate runs produce identical results.</p>
+        </div>
+      </div>
+      <div class="arch-bullet">
+        <div class="ab-icon"><i data-lucide="shield-check"></i></div>
+        <div class="ab-text">
+          <strong>Safe</strong>
+          <p>Bad data is quarantined, never silently loaded into production. The row count invariant proves zero data loss.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 5: PIPELINE FLOW                      -->
+<!-- ============================================ -->
+<section id="pipeline" class="section section-light">
+  <div class="section-inner reveal">
+    <div class="section-label">Pipeline</div>
+    <h2 class="section-heading">Five-Stage Pipeline Flow</h2>
+    <p class="section-subheading">Each stage has a single responsibility. Click any stage to see its implementation details.</p>
+    <div class="pipeline-container">
+      <div class="pipeline-flow" id="pipelineFlow">
+        <!-- EXTRACT -->
+        <div class="pipeline-node active" data-stage="extract" onclick="showStage('extract')">
+          <div class="pn-icon"><i data-lucide="download"></i></div>
+          <div class="pn-label">Extract</div>
+          <div class="pn-file">extract.py</div>
+        </div>
+        <div class="pipeline-arrow"><i data-lucide="chevron-right"></i></div>
+        <!-- TRANSFORM -->
+        <div class="pipeline-node" data-stage="transform" onclick="showStage('transform')">
+          <div class="pn-icon"><i data-lucide="shuffle"></i></div>
+          <div class="pn-label">Transform</div>
+          <div class="pn-file">transform.py</div>
+        </div>
+        <div class="pipeline-arrow"><i data-lucide="chevron-right"></i></div>
+        <!-- VALIDATE -->
+        <div class="pipeline-node" data-stage="validate" onclick="showStage('validate')">
+          <div class="pn-icon"><i data-lucide="check-circle"></i></div>
+          <div class="pn-label">Validate</div>
+          <div class="pn-file">validate.py</div>
+        </div>
+        <div class="pipeline-arrow"><i data-lucide="chevron-right"></i></div>
+        <!-- LOAD -->
+        <div class="pipeline-node" data-stage="load" onclick="showStage('load')">
+          <div class="pn-icon"><i data-lucide="upload"></i></div>
+          <div class="pn-label">Load</div>
+          <div class="pn-file">load.py</div>
+        </div>
+        <div class="pipeline-arrow"><i data-lucide="chevron-right"></i></div>
+        <!-- RECONCILE -->
+        <div class="pipeline-node" data-stage="reconcile" onclick="showStage('reconcile')">
+          <div class="pn-icon"><i data-lucide="scale"></i></div>
+          <div class="pn-label">Reconcile</div>
+          <div class="pn-file">reconcile.py</div>
+        </div>
+      </div>
+
+      <!-- DETAIL PANELS -->
+      <div class="pipeline-detail active" id="detail-extract">
+        <div class="pd-header">
+          <span class="pd-file">etl/extract.py</span>
+        </div>
+        <p class="pd-desc">Reads six CSV files from data/raw/ into pandas DataFrames, validating that required column headers exist before loading.</p>
+        <ul class="pd-ops">
+          <li>Reads contacts, customers, products, sales_orders, order_lines, and etl_batch CSVs from data/raw/</li>
+          <li>Validates that each CSV contains the required column headers</li>
+          <li>Returns a dictionary of DataFrames keyed by entity name for downstream processing</li>
+          <li>Logs the row count of each extracted file for traceability</li>
+        </ul>
+      </div>
+      <div class="pipeline-detail" id="detail-transform">
+        <div class="pd-header">
+          <span class="pd-file">etl/transform.py</span>
+        </div>
+        <p class="pd-desc">Cleans and normalizes each entity's data — standardizing values, correcting formats, and parsing types so every record is consistent before validation.</p>
+        <ul class="pd-ops">
+          <li>Trims leading/trailing whitespace and tabs from all string fields</li>
+          <li>Validates UUID format for primary key columns</li>
+          <li>Validates and lowercases email addresses</li>
+          <li>Canonicalises department, segment, status, and category via lookup tables</li>
+          <li>Title-cases country names for consistency</li>
+          <li>Parses dates using three ISO format attempts (YYYY-MM-DD, with and without time)</li>
+          <li>Parses numeric prices and quantities, removing currency symbols and commas</li>
+          <li>Uppercases currency codes (e.g., 'usd' &rarr; 'USD')</li>
+        </ul>
+      </div>
+      <div class="pipeline-detail" id="detail-validate">
+        <div class="pd-header">
+          <span class="pd-file">etl/validate.py</span>
+        </div>
+        <p class="pd-desc">Runs six sequential cross-row and cross-table validation checks, routing each record to Clean, Quarantine, or Rejected based on the type and severity of failure.</p>
+        <ul class="pd-ops">
+          <li>PK uniqueness — duplicate primary keys are quarantined</li>
+          <li>Required fields — missing mandatory fields trigger quarantine</li>
+          <li>Email uniqueness — duplicates trigger cascade quarantine (child records also quarantined)</li>
+          <li>SKU uniqueness — duplicates trigger cascade quarantine affecting order_lines</li>
+          <li>Email format — invalid format (missing @ or domain) triggers quarantine</li>
+          <li>FK referential integrity — child FK not in parent's clean set triggers quarantine</li>
+          <li>Outputs three sets of CSVs: clean, quarantine, and rejected</li>
+        </ul>
+      </div>
+      <div class="pipeline-detail" id="detail-load">
+        <div class="pd-header">
+          <span class="pd-file">etl/load.py</span>
+        </div>
+        <p class="pd-desc">Loads clean data into PostgreSQL via a two-stage process: bulk COPY into staging tables, then stored procedures upsert from staging into gold tables.</p>
+        <ul class="pd-ops">
+          <li>Truncates all staging tables to ensure idempotent re-runs</li>
+          <li>Bulk COPY clean CSVs into staging tables using psycopg2</li>
+          <li>Executes stored procedures: INSERT new records, UPDATE existing records</li>
+          <li>DELETE-then-reinsert strategy for uniqueness conflicts</li>
+          <li>Records each load as an etl_batch entry with timestamps and status</li>
+        </ul>
+      </div>
+      <div class="pipeline-detail" id="detail-reconcile">
+        <div class="pd-header">
+          <span class="pd-file">etl/reconcile.py</span>
+        </div>
+        <p class="pd-desc">Verifies that no data was lost or duplicated during the pipeline run, by checking row count invariants and writing a structured reconciliation report.</p>
+        <ul class="pd-ops">
+          <li>Verifies: len(clean) + len(quarantine) + len(rejected) == len(raw)</li>
+          <li>Verifies: PostgreSQL staging row count == gold row count</li>
+          <li>Writes pipeline_summary_&lt;timestamp&gt;.json with per-entity counts</li>
+          <li>Writes per-run logs to etl/logs/&lt;timestamp&gt;/</li>
+          <li>Appends metrics to metrics.log for longitudinal tracking</li>
+        </ul>
+      </div>
+
+      <!-- VALIDATE BRANCHES -->
+      <div class="validate-branches" id="validateBranches" style="display:none;">
+        <div class="vb-box clean">
+          <div class="vb-label">Clean</div>
+          <div class="vb-path">data/clean/</div>
+        </div>
+        <div class="vb-box quarantine">
+          <div class="vb-label">Quarantine</div>
+          <div class="vb-path">data/quarantine/</div>
+        </div>
+        <div class="vb-box rejected">
+          <div class="vb-label">Rejected</div>
+          <div class="vb-path">data/rejected/</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 6: DATA QUALITY DEFINITIONS           -->
+<!-- ============================================ -->
+<section id="quality" class="section section-light">
+  <div class="section-inner reveal">
+    <div class="section-label">Data Quality</div>
+    <h2 class="section-heading">Three-Tier Quality Classification</h2>
+    <p class="section-subheading">Every record is classified into exactly one of three tiers after validation. The classification is deterministic and auditable.</p>
+    <div class="grid-3">
+      <!-- REJECTED -->
+      <div class="tier-card tier-rejected">
+        <div class="tier-icon"><i data-lucide="x-circle"></i></div>
+        <div class="tier-title">Rejected</div>
+        <div class="tier-def">Missing a primary key or mandatory field, or corrupted beyond repair (e.g., an unparseable date like "19967--30"). Permanently excluded from the pipeline.</div>
+        <div class="tier-path">data/rejected/&lt;entity&gt;.csv</div>
+        <div class="tier-action">Action: Fix at the source system. Never loadable.</div>
+      </div>
+      <!-- QUARANTINE -->
+      <div class="tier-card tier-quarantine">
+        <div class="tier-icon"><i data-lucide="alert-triangle"></i></div>
+        <div class="tier-title">Quarantine</div>
+        <div class="tier-def">Has a valid, non-null primary key but fails a quality check — a medium/high severity DQ flag, an FK cascade quarantine, or is the losing side of a deduplication.</div>
+        <div class="tier-path">data/quarantine/&lt;entity&gt;.csv</div>
+        <div class="tier-action">Action: Manual review. May be re-ingested after fix.</div>
+      </div>
+      <!-- CLEAN -->
+      <div class="tier-card tier-clean">
+        <div class="tier-icon"><i data-lucide="check-circle-2"></i></div>
+        <div class="tier-title">Clean</div>
+        <div class="tier-def">Passed all NOT NULL, FK referential integrity, UNIQUE (no duplicate emails or SKUs), and CHECK constraints (non-negative prices, positive quantities).</div>
+        <div class="tier-path">data/clean/&lt;entity&gt;.csv</div>
+        <div class="tier-action">Action: Loaded into PostgreSQL gold tables.</div>
+      </div>
+    </div>
+
+    <!-- VALIDATION CASCADE -->
+    <div class="cascade-container">
+      <div class="cascade-title">Validation Cascade</div>
+      <div class="cascade-flow">
+        <div class="cascade-step">
+          <div class="cascade-main">
+            <div class="cascade-num">1</div>
+            <div class="cascade-text">PK Uniqueness</div>
+          </div>
+          <div class="cascade-fail">
+            <div class="cascade-fail-line"></div>
+            <div class="cascade-fail-label">Quarantine</div>
+          </div>
+        </div>
+        <div class="cascade-connector"></div>
+        <div class="cascade-step">
+          <div class="cascade-main">
+            <div class="cascade-num">2</div>
+            <div class="cascade-text">Required Fields Present</div>
+          </div>
+          <div class="cascade-fail">
+            <div class="cascade-fail-line"></div>
+            <div class="cascade-fail-label">Quarantine</div>
+          </div>
+        </div>
+        <div class="cascade-connector"></div>
+        <div class="cascade-step">
+          <div class="cascade-main">
+            <div class="cascade-num">3</div>
+            <div class="cascade-text">Email Uniqueness</div>
+          </div>
+          <div class="cascade-fail">
+            <div class="cascade-fail-line"></div>
+            <div class="cascade-fail-label" style="font-size:0.62rem;">Cascade Quarantine</div>
+          </div>
+        </div>
+        <div class="cascade-connector"></div>
+        <div class="cascade-step">
+          <div class="cascade-main">
+            <div class="cascade-num">4</div>
+            <div class="cascade-text">SKU Uniqueness</div>
+          </div>
+          <div class="cascade-fail">
+            <div class="cascade-fail-line"></div>
+            <div class="cascade-fail-label" style="font-size:0.62rem;">Cascade Quarantine</div>
+          </div>
+        </div>
+        <div class="cascade-connector"></div>
+        <div class="cascade-step">
+          <div class="cascade-main">
+            <div class="cascade-num">5</div>
+            <div class="cascade-text">Email Format (@ + domain)</div>
+          </div>
+          <div class="cascade-fail">
+            <div class="cascade-fail-line"></div>
+            <div class="cascade-fail-label">Quarantine</div>
+          </div>
+        </div>
+        <div class="cascade-connector"></div>
+        <div class="cascade-step">
+          <div class="cascade-main">
+            <div class="cascade-num">6</div>
+            <div class="cascade-text">FK Referential Integrity</div>
+          </div>
+          <div class="cascade-fail">
+            <div class="cascade-fail-line"></div>
+            <div class="cascade-fail-label">Quarantine</div>
+          </div>
+        </div>
+        <div class="cascade-connector"></div>
+        <div class="cascade-result">ValidationResult &rarr; Clean / Quarantine / Rejected</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 7: RECONCILIATION                     -->
+<!-- ============================================ -->
+<section id="reconcile" class="section section-light">
+  <div class="section-inner reveal">
+    <div class="section-label">Reconciliation</div>
+    <h2 class="section-heading">Row Count Invariant</h2>
+    <p class="section-subheading">Every pipeline run must prove that no data was lost. Two invariant checks guarantee this.</p>
+    <div class="recon-equation">
+      <div class="recon-term clean">
+        <div class="rt-label">len(clean)</div>
+      </div>
+      <div class="recon-op">+</div>
+      <div class="recon-term quarantine">
+        <div class="rt-label">len(quarantine)</div>
+      </div>
+      <div class="recon-op">+</div>
+      <div class="recon-term rejected">
+        <div class="rt-label">len(rejected)</div>
+      </div>
+      <div class="recon-op">=</div>
+      <div class="recon-term raw">
+        <div class="rt-label">len(raw)</div>
+      </div>
+    </div>
+    <div class="text-center">
+      <div class="recon-db-check">
+        <i data-lucide="check"></i>
+        PostgreSQL: staging row count == gold row count
+      </div>
+    </div>
+    <p class="recon-proof">Together these checks prove zero data loss on every single pipeline run.</p>
+    <div class="source-table-wrap">
+      <table class="source-table">
+        <thead>
+          <tr><th>Gold Table</th><th>Rows After Clean Run</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>etl_batch</td><td>2</td></tr>
+          <tr><td>contact</td><td>1,586</td></tr>
+          <tr><td>customer</td><td>1,539</td></tr>
+          <tr><td>product</td><td>757</td></tr>
+          <tr><td>sales_order</td><td>2,630</td></tr>
+          <tr><td>order_line</td><td>3,257</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 8: UNDER THE HOOD — FILE TREE         -->
+<!-- ============================================ -->
+<section id="under-the-hood" class="section section-dark">
+  <div class="section-inner reveal">
+    <div class="section-label">Under the Hood</div>
+    <h2 class="section-heading">Repository Structure</h2>
+    <p class="section-subheading">The complete project file tree — every module, script, and data directory in its actual location.</p>
+    <div class="file-tree-container" id="fileTree">
+      <div class="ft-header">
+        <i data-lucide="folder-tree" style="width:14px;height:14px;color:#CADCFC;opacity:0.4;"></i>
+        <span>CAI4_AIS5_S11_P2/</span>
+      </div>
+      <div class="ft-root" id="ftRoot"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 9: MODULE DEPENDENCY GRAPH            -->
+<!-- ============================================ -->
+<section id="module-deps" class="section section-light">
+  <div class="section-inner reveal">
+    <div class="section-label">Module Dependencies</div>
+    <h2 class="section-heading">Dependency Graph</h2>
+    <p class="section-subheading">Clean separation of concerns. Each module depends only on what it needs — no circular dependencies.</p>
+    <div class="dep-graph">
+      <div class="dep-row">
+        <div class="dep-box entry">__main__.py</div>
+      </div>
+      <div class="dep-arrow-down"><i data-lucide="chevron-down"></i></div>
+      <div class="dep-row">
+        <div class="dep-box main">main.py</div>
+      </div>
+      <div class="dep-arrow-down"><i data-lucide="chevron-down"></i></div>
+      <div class="dep-row">
+        <div class="dep-box stage">extract.py</div>
+        <div class="dep-box stage">transform.py</div>
+        <div class="dep-box stage">validate.py</div>
+        <div class="dep-box stage">load.py</div>
+        <div class="dep-box stage">reconcile.py</div>
+        <div class="dep-box stage">config.py</div>
+      </div>
+      <div class="dep-arrow-down"><i data-lucide="chevron-down"></i></div>
+      <div class="dep-row">
+        <div class="dep-box util">utils/logger.py</div>
+        <div class="dep-box util">utils/db.py</div>
+      </div>
+      <div class="dep-arrow-down"><i data-lucide="chevron-down"></i></div>
+      <div class="dep-row">
+        <div class="dep-box ext">psycopg2</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 10: TEAM ROLES                        -->
+<!-- ============================================ -->
+<section id="team" class="section section-dark">
+  <div class="section-inner reveal">
+    <div class="section-label">Team</div>
+    <h2 class="section-heading">Team Roles</h2>
+    <p class="section-subheading">Five members, five areas of ownership.</p>
+    <div class="grid-5">
+      <div class="card card-dark team-card">
+        <div class="team-avatar"><i data-lucide="compass"></i></div>
+        <div class="team-name">Ali</div>
+        <div class="team-role">Project Lead<br>Architecture &amp; Transform</div>
+      </div>
+      <div class="card card-dark team-card">
+        <div class="team-avatar"><i data-lucide="download"></i></div>
+        <div class="team-name">Amin</div>
+        <div class="team-role">Data Collection<br>Extract &amp; Load</div>
+      </div>
+      <div class="card card-dark team-card">
+        <div class="team-avatar"><i data-lucide="shield-check"></i></div>
+        <div class="team-name">Aseel</div>
+        <div class="team-role">Data Quality<br>&amp; Validation</div>
+      </div>
+      <div class="card card-dark team-card">
+        <div class="team-avatar"><i data-lucide="database"></i></div>
+        <div class="team-name">Menna</div>
+        <div class="team-role">Data Modeling<br>SQL &amp; Reporting</div>
+      </div>
+      <div class="card card-dark team-card">
+        <div class="team-avatar"><i data-lucide="book-open"></i></div>
+        <div class="team-name">Habiba</div>
+        <div class="team-role">Documentation<br>&amp; BI</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 11: DOCUMENTATION                     -->
+<!-- ============================================ -->
+<section id="docs" class="section section-light">
+  <div class="section-inner reveal">
+    <div class="section-label">Documentation</div>
+    <h2 class="section-heading">Project Documentation</h2>
+    <p class="section-subheading">Comprehensive wiki covering every aspect of the project — from setup instructions to transformation rules.</p>
+    <div class="grid-4" style="margin-top:2rem;">
+      <div class="card doc-card">
+        <div class="doc-icon"><i data-lucide="file-text"></i></div>
+        <div>
+          <div class="doc-name">Home.md</div>
+          <div class="doc-desc">Project overview and quick-start guide</div>
+        </div>
+      </div>
+      <div class="card doc-card">
+        <div class="doc-icon"><i data-lucide="play"></i></div>
+        <div>
+          <div class="doc-name">Run-Guide.md</div>
+          <div class="doc-desc">Step-by-step pipeline execution instructions</div>
+        </div>
+      </div>
+      <div class="card doc-card">
+        <div class="doc-icon"><i data-lucide="blocks"></i></div>
+        <div>
+          <div class="doc-name">Project-Architecture.md</div>
+          <div class="doc-desc">Medallion architecture and module design</div>
+        </div>
+      </div>
+      <div class="card doc-card">
+        <div class="doc-icon"><i data-lucide="hard-drive"></i></div>
+        <div>
+          <div class="doc-name">Data-Sources.md</div>
+          <div class="doc-desc">Source system descriptions and schemas</div>
+        </div>
+      </div>
+      <div class="card doc-card">
+        <div class="doc-icon"><i data-lucide="bar-chart-3"></i></div>
+        <div>
+          <div class="doc-name">Data-Randomness-Report.md</div>
+          <div class="doc-desc">Statistical analysis of data quality issues</div>
+        </div>
+      </div>
+      <div class="card doc-card">
+        <div class="doc-icon"><i data-lucide="git-branch"></i></div>
+        <div>
+          <div class="doc-name">ETL-Pipeline.md</div>
+          <div class="doc-desc">Detailed pipeline stage documentation</div>
+        </div>
+      </div>
+      <div class="card doc-card">
+        <div class="doc-icon"><i data-lucide="wand-2"></i></div>
+        <div>
+          <div class="doc-name">Transformation-Rules.md</div>
+          <div class="doc-desc">Every cleaning and normalization rule</div>
+        </div>
+      </div>
+      <div class="card doc-card">
+        <div class="doc-icon"><i data-lucide="shield-check"></i></div>
+        <div>
+          <div class="doc-name">Data-Quality-Definitions.md</div>
+          <div class="doc-desc">Clean, Quarantine, Rejected tier definitions</div>
+        </div>
+      </div>
+      <div class="card doc-card">
+        <div class="doc-icon"><i data-lucide="book-open"></i></div>
+        <div>
+          <div class="doc-name">Glossary.md</div>
+          <div class="doc-desc">Domain and technical term definitions</div>
+        </div>
+      </div>
+      <div class="card doc-card">
+        <div class="doc-icon"><i data-lucide="users"></i></div>
+        <div>
+          <div class="doc-name">Team-Roles.md</div>
+          <div class="doc-desc">Team member responsibilities and contributions</div>
+        </div>
+      </div>
+    </div>
+    <p class="docs-closing">"Any new team member can understand the project fully from the documentation."</p>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- SECTION 12: CLOSING                           -->
+<!-- ============================================ -->
+<section id="closing" class="section section-dark closing-section">
+  <div class="section-inner reveal">
+    <h2>Customer Data ETL Pipeline</h2>
+    <p class="closing-sub">From fragmented CRM exports to a clean, trusted, analysis-ready PostgreSQL database</p>
+    <p class="closing-team">Ali &middot; Amin &middot; Aseel &middot; Menna &middot; Habiba</p>
+    <p class="closing-thanks">Thank you</p>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<!-- JAVASCRIPT                                    -->
+<!-- ============================================ -->
+<script>
+// Initialize Lucide icons
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+
+// ========== SCROLL PROGRESS BAR ==========
+window.addEventListener('scroll', function() {
+  var scrollTop = window.scrollY;
+  var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  var progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+  document.getElementById('scroll-progress').style.width = progress + '%';
+});
+
+// ========== INTERSECTION OBSERVER — FADE IN ==========
+(function() {
+  var reveals = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+    reveals.forEach(function(el) { observer.observe(el); });
+  } else {
+    reveals.forEach(function(el) { el.classList.add('visible'); });
+  }
+})();
+
+// ========== PIPELINE STAGE DETAIL ==========
+function showStage(stage) {
+  // Update active node
+  document.querySelectorAll('.pipeline-node').forEach(function(n) {
+    n.classList.toggle('active', n.getAttribute('data-stage') === stage);
+  });
+  // Update detail panels
+  document.querySelectorAll('.pipeline-detail').forEach(function(p) {
+    p.classList.remove('active');
+  });
+  var detail = document.getElementById('detail-' + stage);
+  if (detail) detail.classList.add('active');
+  // Show validate branches when validate is selected
+  var branches = document.getElementById('validateBranches');
+  if (branches) {
+    branches.style.display = (stage === 'validate') ? 'flex' : 'none';
+  }
+}
+// Show validate branches by default since extract is shown first — no, only for validate
+// Actually, show the detail for extract on load (already set via .active class)
+
+// ========== FILE TREE ==========
+(function() {
+  var treeData = [
+    { name: 'adf/', type: 'folder', children: [
+      { name: 'datasets/', type: 'folder', children: [] },
+      { name: 'linked_services/', type: 'folder', children: [] },
+      { name: 'pipelines/', type: 'folder', children: [] }
+    ]},
+    { name: 'data/', type: 'folder', children: [
+      { name: 'raw/', type: 'folder', annotation: 'Untouched source of truth', children: [
+        { name: 'contacts.csv', type: 'csv' },
+        { name: 'customers.csv', type: 'csv' },
+        { name: 'etl_batch.csv', type: 'csv' },
+        { name: 'ITC CRM_dataset_combined.csv', type: 'csv' },
+        { name: 'order_lines.csv', type: 'csv' },
+        { name: 'products.csv', type: 'csv' },
+        { name: 'sales_orders.csv', type: 'csv' }
+      ]},
+      { name: 'clean/', type: 'folder', children: [
+        { name: 'contacts.csv', type: 'csv' },
+        { name: 'customers.csv', type: 'csv' },
+        { name: 'etl_batch.csv', type: 'csv' },
+        { name: 'order_lines.csv', type: 'csv' },
+        { name: 'products.csv', type: 'csv' },
+        { name: 'sales_orders.csv', type: 'csv' }
+      ]},
+      { name: 'quarantine/', type: 'folder', children: [
+        { name: 'contacts.csv', type: 'csv' },
+        { name: 'customers.csv', type: 'csv' },
+        { name: 'order_lines.csv', type: 'csv' },
+        { name: 'products.csv', type: 'csv' },
+        { name: 'sales_orders.csv', type: 'csv' }
+      ]},
+      { name: 'rejected/', type: 'folder', children: [
+        { name: 'contacts.csv', type: 'csv' },
+        { name: 'customers.csv', type: 'csv' },
+        { name: 'order_lines.csv', type: 'csv' },
+        { name: 'products.csv', type: 'csv' },
+        { name: 'sales_orders.csv', type: 'csv' }
+      ]}
+    ]},
+    { name: 'etl/', type: 'folder', annotation: 'Python pipeline (5 stages)', children: [
+      { name: '__main__.py', type: 'py' },
+      { name: 'main.py', type: 'py' },
+      { name: 'config.py', type: 'py' },
+      { name: 'extract.py', type: 'py' },
+      { name: 'transform.py', type: 'py' },
+      { name: 'validate.py', type: 'py' },
+      { name: 'load.py', type: 'py' },
+      { name: 'reconcile.py', type: 'py' },
+      { name: 'utils/', type: 'folder', children: [
+        { name: 'db.py', type: 'py' },
+        { name: 'logger.py', type: 'py' }
+      ]},
+      { name: 'logs/', type: 'folder', children: [] }
+    ]},
+    { name: 'scripts/', type: 'folder', children: [
+      { name: 'sql/', type: 'folder', annotation: 'PostgreSQL schema & procedures', children: [
+        { name: 'schema.svg', type: 'other' },
+        { name: 'scripts/', type: 'folder', children: [
+          { name: '01_enterprise_data_model_mysql.sql', type: 'sql' },
+          { name: '02_create_tables.sql', type: 'sql' },
+          { name: '03_create_views.sql', type: 'sql' },
+          { name: '04_load_procedures.sql', type: 'sql' },
+          { name: '05_validation_queries.sql', type: 'sql' }
+        ]}
+      ]}
+    ]},
+    { name: 'tests/', type: 'folder', annotation: 'Automated pipeline tests', children: [
+      { name: 'test_pipeline_status.py', type: 'py' },
+      { name: 'test_row_count_invariant.py', type: 'py' },
+      { name: 'test_stale_file_overwrite.py', type: 'py' }
+    ]},
+    { name: 'wiki/', type: 'folder', annotation: 'Full project documentation', children: [
+      { name: 'Home.md', type: 'md' },
+      { name: 'Run-Guide.md', type: 'md' },
+      { name: 'Data-Sources.md', type: 'md' },
+      { name: 'Data-Randomness-Report.md', type: 'md' },
+      { name: 'Project-Architecture.md', type: 'md' },
+      { name: 'ETL-Pipeline.md', type: 'md' },
+      { name: 'Transformation-Rules.md', type: 'md' },
+      { name: 'Data-Quality-Definitions.md', type: 'md' },
+      { name: 'Glossary.md', type: 'md' },
+      { name: 'Team-Roles.md', type: 'md' },
+      { name: 'project_flow.md', type: 'md' }
+    ]},
+    { name: 'presentation/', type: 'folder', children: [] },
+    { name: 'README.md', type: 'md' },
+    { name: 'requirements.txt', type: 'other' },
+    { name: 'project_structure.md', type: 'md' }
+  ];
+
+  var iconMap = {
+    'folder': { cls: 'folder', icon: 'folder' },
+    'py': { cls: 'py', icon: 'file-code' },
+    'sql': { cls: 'sql', icon: 'database' },
+    'md': { cls: 'md', icon: 'file-text' },
+    'csv': { cls: 'csv', icon: 'file-spreadsheet' },
+    'other': { cls: 'other', icon: 'file' }
+  };
+
+  function buildTree(items, container, depth) {
+    items.forEach(function(item) {
+      var isFolder = item.type === 'folder';
+      var hasChildren = isFolder && item.children && item.children.length > 0;
+      var entry = document.createElement('div');
+      entry.style.paddingLeft = (depth * 20) + 'px';
+
+      var itemRow = document.createElement('div');
+      itemRow.className = 'ft-item' + (hasChildren ? ' has-children' : '');
+
+      if (hasChildren) {
+        var chevron = document.createElement('span');
+        chevron.className = 'ft-chevron open';
+        chevron.innerHTML = '<i data-lucide="chevron-right"></i>';
+        itemRow.appendChild(chevron);
+      } else {
+        var spacer = document.createElement('span');
+        spacer.style.width = '16px';
+        spacer.style.minWidth = '16px';
+        spacer.style.display = 'inline-block';
+        spacer.style.marginRight = '0.25rem';
+        itemRow.appendChild(spacer);
+      }
+
+      var iconSpan = document.createElement('span');
+      iconSpan.className = 'ft-icon ' + iconMap[item.type].cls;
+      if (isFolder) {
+        iconSpan.innerHTML = '<i data-lucide="folder"></i>';
+      } else {
+        iconSpan.innerHTML = '<i data-lucide="' + iconMap[item.type].icon + '"></i>';
+      }
+      itemRow.appendChild(iconSpan);
+
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'ft-name ' + (isFolder ? 'folder-name' : 'file-' + item.type);
+      nameSpan.textContent = item.name;
+      itemRow.appendChild(nameSpan);
+
+      if (item.annotation) {
+        var ann = document.createElement('span');
+        ann.className = 'ft-annotation';
+        ann.textContent = item.annotation;
+        itemRow.appendChild(ann);
+      }
+
+      entry.appendChild(itemRow);
+
+      if (hasChildren) {
+        var childContainer = document.createElement('div');
+        childContainer.className = 'ft-children open';
+        buildTree(item.children, childContainer, depth + 1);
+        entry.appendChild(childContainer);
+
+        itemRow.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var chev = itemRow.querySelector('.ft-chevron');
+          var kids = entry.querySelector('.ft-children');
+          chev.classList.toggle('open');
+          kids.classList.toggle('open');
+        });
+      }
+
+      container.appendChild(entry);
+    });
+  }
+
+  var root = document.getElementById('ftRoot');
+  buildTree(treeData, root, 0);
+
+  // Re-init lucide for dynamically added icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+})();
+</script>
+</body>
+</html>
